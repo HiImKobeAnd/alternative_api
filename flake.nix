@@ -1,92 +1,83 @@
+# I have based this flake a lot on: https://github.com/Ladas552/Flake-Ocean/blob/b8d7512f76fa0722533c9523a280dd071f8df168/templates/elixir-phoenix/flake.nix#L4
 {
   description = "An Elixir development shell.";
 
-  inputs.nixpkgs.url = "nixpkgs";
+  inputs = {
+    nixpkgs.url = "nixpkgs";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
 
   outputs =
     {
       self,
       nixpkgs,
+      flake-utils,
     }:
-    let
-      overlay = prev: final: rec {
-        beamPackages = prev.beamMinimal28Packages;
-        elixir = beamPackages.elixir_1_19;
-        erlang = beamPackages.erlang;
-        elixir-ls = beamPackages.elixir-ls.override {
-          elixir = elixir;
-          # mixRelease = beamPackages.mixRelease.override { elixir = elixir; };
-        };
-        hex = beamPackages.hex;
-        final.mix2nix = prev.mix2nix.overrideAttrs {
-          nativeBuildInputs = [ final.elixir ];
-          buildInputs = [ final.erlang ];
-        };
-      };
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
 
-      forAllSystems = nixpkgs.lib.genAttrs [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-
-      nixpkgsFor =
-        system:
-        import nixpkgs {
+        overlay = prev: final: rec {
+          beamPackages = prev.beamMinimal28Packages;
+          elixir = beamPackages.elixir_1_19;
+          erlang = beamPackages.erlang;
+          elixir-ls = beamPackages.elixir-ls.override {
+            elixir = elixir;
+          };
+          hex = beamPackages.hex;
+          final.mix2nix = prev.mix2nix.overrideAttrs {
+            nativeBuildInputs = [ final.elixir ];
+            buildInputs = [ final.erlang ];
+          };
+        };
+        pkgs = import nixpkgs {
           inherit system;
           overlays = [ overlay ];
         };
-    in
-    {
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgsFor system;
-        in
-        {
-          default =
-            let
-              opts =
-                with pkgs;
-                lib.optional stdenv.isLinux inotify-tools
-                ++ lib.optionals stdenv.isDarwin (
-                  with darwin.apple_sdk.frameworks;
-                  [
-                    CoreServices
-                    Foundation
-                  ]
-                );
-            in
-            pkgs.mkShell {
-              packages =
-                with pkgs;
-                [
-                  sqlite
-                  elixir
-                  elixir-ls
-                  hex
-                  mix2nix
-                  nodejs_20
-                  yarn
-                ]
-                ++ opts;
-              shellHook = ''
-                # limit mix to current project
-                mkdir -p .nix-mix
-                export MIX_HOME=$PWD/.nix-mix
+      in
+      rec {
+        packages.default = { };
+        apps.default = flake-utils.lib.mkApp { drv = packages.default; };
 
-                # rewire executables
-                export PATH=$MIX_HOME/bin:$PATH
-                export PATH=$MIX_HOME/escripts:$PATH
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [ ];
+          buildInputs =
+            with pkgs;
+            [
+              sqlite
+              elixir
+              elixir-ls
+              hex
+              mix2nix
+              nodejs_20
+              yarn
+            ]
+            ++ lib.optionals stdenv.isLinux [
+              libnotify
+              inotify-tools
+            ]
+            ++ lib.optionals stdenv.isDarwin [
+              terminal-notifier
+              darwin.apple_sdk.frameworks.CoreFoundation
+              darwin.apple_sdk.frameworks.CoreServices
+            ];
 
-                # limit history to current project
-                export ERL_AFLAGS="-kernel shell_history enabled -kernel shell_history_path '\"$PWD/.erlang-history\"'"
+          shellHook = ''
+            mkdir -p .nix-mix
+            mkdir -p .nix-hex
+            export MIX_HOME=$PWD/.nix-mix
+            export HEX_HOME=$PWD/.nix-hex
+            export ERL_LIBS=$HEX_HOME/lib/erlang/lib
 
-                export TAILWIND_PATH="${pkgs.tailwindcss_4}/bin/tailwindcss"
-              '';
-            };
-        }
-      );
-    };
+            export PATH=$MIX_HOME/bin:$PATH
+            export PATH=$MIX_HOME/escripts:$PATH
+            export PATH=$HEX_HOME/bin:$PATH
+
+            export ERL_AFLAGS="-kernel shell_history enabled -kernel shell_history_path '\"$PWD/.erlang-history\"'"
+
+            export TAILWIND_PATH="${pkgs.tailwindcss_4}/bin/tailwindcss"
+          '';
+        };
+      }
+    );
 }
