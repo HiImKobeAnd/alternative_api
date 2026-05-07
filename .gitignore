@@ -40,3 +40,8 @@ npm-debug.log
 .envrc
 .nix-mix/
 .nix-hex/
+
+# For SQLite
+/*.db
+/*.db-shm
+/*.db-wal

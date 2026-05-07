@@ -16,7 +16,6 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-
         overlay = prev: final: rec {
           beamPackages = prev.beamMinimal28Packages;
           elixir = beamPackages.elixir_1_19;
