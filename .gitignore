@@ -45,3 +45,6 @@ npm-debug.log
 /*.db
 /*.db-shm
 /*.db-wal
+
+# Erlang
+.erlang-history/
