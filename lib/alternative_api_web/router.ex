@@ -2,7 +2,7 @@ defmodule AlternativeApiWeb.Router do
   use AlternativeApiWeb, :router
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug :accepts, ["html", "json"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {AlternativeApiWeb.Layouts, :root}
@@ -15,18 +15,36 @@ defmodule AlternativeApiWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :auth do
+    plug AlternativeApiWeb.Authentication
+  end
+
   scope "/", AlternativeApiWeb do
     pipe_through :browser
 
     get "/", PageController, :home
     get "/hello", HelloController, :index
     get "/hello/:messenger", HelloController, :show
+
+    resources "/users", UserController do
+      resources "/posts", PostController
+    end
+
+    resources "/comments", CommentController, except: [:delete]
+    resources "/reviews", ReviewController
+  end
+
+  scope "/admin", AlternativeApiWeb.Admin do
+    pipe_through :browser
+    resources "/images", ImageController
+    resources "/reviews", ReviewController
+    resources "/users", UserController
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", AlternativeApiWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", AlternativeApiWeb do
+    pipe_through [:api, :auth]
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:alternative_api, :dev_routes) do
