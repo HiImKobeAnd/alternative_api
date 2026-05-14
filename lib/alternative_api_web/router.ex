@@ -32,6 +32,11 @@ defmodule AlternativeApiWeb.Router do
 
     resources "/comments", CommentController, except: [:delete]
     resources "/reviews", ReviewController
+
+    live "/post", BlogLive.Index, :index
+    live "/post/new", BlogLive.Form, :new
+    live "/post/:id", BlogLive.Show, :show
+    live "/post/:id/edit", BlogLive.Form, :edit
   end
 
   scope "/admin", AlternativeApiWeb.Admin do
@@ -43,7 +48,8 @@ defmodule AlternativeApiWeb.Router do
 
   # Other scopes may use custom stacks.
   scope "/api", AlternativeApiWeb do
-    pipe_through [:api, :auth]
+    pipe_through [:api]
+    resources "/urls", UrlController, except: [:new, :edit]
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
